@@ -1,8 +1,8 @@
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../core/design_systems/design_system_export.dart';
-import '../core/navigaiton/routers.dart';
-import '../core/utils/app_constans.dart';
+import '../core/navigaition/routers.dart';
+import '../core/utils/app_constants.dart';
 
 class App extends StatelessWidget {
   const App({super.key});

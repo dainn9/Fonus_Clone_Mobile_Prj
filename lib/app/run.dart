@@ -1,3 +1,5 @@
+import 'package:clone_fonus_app/core/navigaition/routers.dart';
+
 import '../core/design_systems/design_system_export.dart';
 import 'app.dart';
 
@@ -12,6 +14,8 @@ void run() async {
   // In thông báo khởi động
   // Logger.log('Application is starting...');
 
+  //initial router
+  FonosRouter.setupRouter();
   // Khởi chạy ứng dụng
   runApp(const App());
 }
