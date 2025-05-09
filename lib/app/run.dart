@@ -1,4 +1,5 @@
 import '../core/design_systems/design_system_export.dart';
+import '../core/navigation/routers.dart';
 import 'app.dart';
 
 void run() async {
@@ -13,5 +14,6 @@ void run() async {
   // Logger.log('Application is starting...');
 
   // Khởi chạy ứng dụng
-  runApp(const App());
+  FonosRouter.setupRouter();
+  runApp( App());
 }

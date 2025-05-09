@@ -1,21 +1,24 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../core/design_systems/design_system_export.dart';
-import '../core/navigaiton/routers.dart';
-import '../core/utils/app_constans.dart';
+import '../core/navigation/routers.dart';
+import '../core/utils/app_constants.dart';
 
 class App extends StatelessWidget {
-  const App({super.key});
+  App({super.key}); // Xóa từ khóa 'const'
+
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
   @override
   Widget build(BuildContext context) {
     return ScreenUtilInit(
-      // Sử dụng một kích thước cố định cho designSize - thường dựa theo thiết kế Figma/XD
-      designSize: const Size(375, 812), // hoặc kích thước thiết kế của bạn
+      designSize: const Size(375, 812),
       minTextAdapt: true,
       splitScreenMode: true,
       builder: (context, child) {
         return MaterialApp(
+          navigatorKey: _navigatorKey,
           debugShowCheckedModeBanner: false,
           title: Appconstants.APP_TITLE,
           theme: BMaterialTheme.light(),
