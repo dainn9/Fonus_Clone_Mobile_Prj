@@ -3,8 +3,8 @@ import '../../components/input.dart';
 import '../component/book_item.dart';
 import '../model/book.dart';
 
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+class HomeCategory extends StatelessWidget {
+  const HomeCategory({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
