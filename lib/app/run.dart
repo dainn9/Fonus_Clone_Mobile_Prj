@@ -1,7 +1,7 @@
 import 'package:clone_fonus_app/core/navigation/routers.dart';
+=======
 import 'package:clone_fonus_app/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
-
 import '../core/design_systems/design_system_export.dart';
 import 'app.dart';
 
@@ -17,7 +17,6 @@ void run() async {
   // Logger.log('Application is starting...');
 
   //initial router
-  FonosRouter.setupRouter();
   // Khởi chạy ứng dụng
   runApp( App());
 }

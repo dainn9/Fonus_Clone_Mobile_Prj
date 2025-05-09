@@ -1,3 +1,4 @@
+import 'package:clone_fonus_app/features/home/view/home_listening.dart';
 import 'package:flutter/material.dart';
 
 // Book components
@@ -69,7 +70,7 @@ class HomeDetail extends StatelessWidget {
                         author: "ERAN KATZ",
                         subtitle: "JEROME BECOMES A GENIUS",
                         imageUrl:
-                            "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Star_of_David.svg/1200px-Star_of_David.svg.png",
+                        "https://upload.wikimedia.org/wikipedia/commons/thumb/4/49/Star_of_David.svg/1200px-Star_of_David.svg.png",
                       ),
                       const SizedBox(height: 16),
                       const Text(
@@ -123,7 +124,7 @@ class HomeDetail extends StatelessWidget {
 
                 const SizedBox(height: 24),
 
-                // Action buttons
+                // Action buttons - Modified to navigate to HomeListening
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
                   child: Row(
@@ -136,11 +137,20 @@ class HomeDetail extends StatelessWidget {
                         onPressed: () {},
                       ),
                       const SizedBox(width: 8),
-                      const Expanded(
+                      Expanded(
                         child: ActionButton(
                           text: "Bắt đầu nghe",
                           icon: Icons.play_arrow,
-                          color: Color(0xFFF87D63),
+                          color: const Color(0xFFF87D63),
+                          onPressed: () {
+                            // Navigate to HomeListening screen
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const HomeListening(),
+                              ),
+                            );
+                          },
                         ),
                       ),
                     ],
