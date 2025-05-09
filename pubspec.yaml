@@ -21,6 +21,9 @@ dependencies:
   introduction_screen: ^3.1.17  # Package để tạo onboarding screen
   shared_preferences: ^2.2.3
   flutter_bloc: ^9.1.1
+  just_audio: ^0.9.35  # Hoặc phiên bản mới nhất
+  youtube_explode_dart: ^2.4.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
