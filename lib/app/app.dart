@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../core/design_systems/design_system_export.dart';
-import '../core/navigation/routers.dart';
+import '../core/navigaition/routers.dart';
 import '../core/utils/app_constants.dart';
 
 class App extends StatelessWidget {
