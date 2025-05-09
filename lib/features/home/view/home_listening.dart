@@ -79,7 +79,7 @@ class _HomeListeningState extends State<HomeListening> {
 
     try {
       // ID của video YouTube
-      const videoId = 'uIDqAHgOPjc'; // ID từ URL https://www.youtube.com/watch?v=Pe0jMzpWaIw
+      const videoId = 'vnufkPmv3bE'; // ID từ URL https://www.youtube.com/watch?v=Pe0jMzpWaIw
 
       // Lấy thông tin về các định dạng âm thanh có sẵn
       final StreamManifest manifest = await _youtubeExplode.videos.streamsClient.getManifest(videoId);
@@ -299,7 +299,7 @@ class _HomeListeningState extends State<HomeListening> {
                               children: [
                                 // Hình ảnh bìa sách - sử dụng thumbnail từ YouTube
                                 Image.network(
-                                  'https://img.youtube.com/vi/Pe0jMzpWaIw/maxresdefault.jpg',
+                                  'https://bizweb.dktcdn.net/100/197/269/products/tri-tue-do-thai.jpg?v=1510634413673',
                                   fit: BoxFit.cover,
                                   errorBuilder: (context, error, stackTrace) =>
                                       Column(
@@ -359,7 +359,7 @@ class _HomeListeningState extends State<HomeListening> {
                     Column(
                       children: [
                         Text(
-                          'Đồi Gió Hú',
+                          'Trí tuệ Do Thái',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 24,
@@ -368,7 +368,7 @@ class _HomeListeningState extends State<HomeListening> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Phần 10',
+                          'Phần 1',
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.8),
                             fontSize: 16,

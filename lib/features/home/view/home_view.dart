@@ -1,31 +1,593 @@
 import 'package:flutter/material.dart';
-import '../../components/book_components/book_cover.dart';
-import '../../components/book_components/category_pill.dart';
-import '../../components/book_components/chapter_item.dart';
-import '../../components/book_components/rating_card.dart';
-import '../../components/book_components/review_card.dart';
-import '../../components/book_components/book_info_row.dart';
-import '../../components/book_components/action_button.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
-// Book lists
-import '../../components/book_lists/related_book_card.dart';
-import '../../components/book_lists/author_book_card.dart';
-import '../../components/book_lists/narrator_book_card.dart';
-import '../../components/book_lists/publisher_book_card.dart';
+import 'home_detail.dart';
 
-// Section headers
-import '../../components/section_headers/section_header.dart';
-import '../../components/section_headers/section_header_with_icon.dart';
+class Book {
+  final String title;
+  final String author;
+  final Color color;
+  final String? tag;
+  final String? coverUrl;
 
-import '../models/book.dart';
+  Book({
+    required this.title,
+    this.author = '',
+    this.color = Colors.white,
+    this.tag,
+    this.coverUrl,
+  });
+}
 
-class HomeScreen extends StatelessWidget {
+class Podcast {
+  final String title;
+  final String number;
+  final String? imageUrl;
+
+  Podcast({required this.title, required this.number, this.imageUrl});
+}
+
+class Review {
+  final String bookTitle;
+  final String author;
+  final String reviewerName;
+  final String timeAgo;
+  final int rating;
+  final String comment;
+
+  Review({
+    required this.bookTitle,
+    required this.author,
+    required this.reviewerName,
+    required this.timeAgo,
+    required this.rating,
+    required this.comment,
+  });
+}
+
+// API Service for Audiobooks - Using Open Library API instead
+class AudiobookApiService {
+  static const String baseUrl = 'https://openlibrary.org/subjects';
+
+  Future<List<Map<String, dynamic>>> getAudiobooks({
+    int limit = 20,
+    int offset = 0,
+    String subject = 'audiobooks',
+  }) async {
+    final Uri uri = Uri.parse('$baseUrl/$subject.json?limit=$limit&offset=$offset');
+
+    try {
+      final response = await http.get(uri);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        final List<dynamic> works = data['works'];
+
+        return works.map((work) => {
+          'title': work['title'],
+          'authors': work['authors']?.map((a) => {'name': a['name']})?.toList() ?? [],
+          'cover_id': work['cover_id'],
+          'key': work['key'],
+        } as Map<String, dynamic>).toList();
+      } else {
+        throw Exception('Failed to load books: ${response.statusCode}');
+      }
+    } catch (e) {
+      // Fallback to mock data if API fails
+      return _getMockBooks();
+    }
+  }
+
+  // Fallback mock data in case the API fails
+  List<Map<String, dynamic>> _getMockBooks() {
+    return [
+      {
+        'title': 'Đắc Nhân Tâm',
+        'authors': [{'name': 'Dale Carnegie'}],
+        'cover_id': null,
+        'key': '/works/1',
+      },
+      {
+        'title': 'Nhà Giả Kim',
+        'authors': [{'name': 'Paulo Coelho'}],
+        'cover_id': null,
+        'key': '/works/2',
+      },
+      {
+        'title': 'Tư Duy Nhanh Và Chậm',
+        'authors': [{'name': 'Daniel Kahneman'}],
+        'cover_id': null,
+        'key': '/works/3',
+      },
+      {
+        'title': 'Người Giàu Có Nhất Thành Babylon',
+        'authors': [{'name': 'George S. Clason'}],
+        'cover_id': null,
+        'key': '/works/4',
+      },
+      {
+        'title': 'Điểm Đến Của Cuộc Đời',
+        'authors': [{'name': 'James Allen'}],
+        'cover_id': null,
+        'key': '/works/5',
+      },
+      {
+        'title': 'Bí Mật',
+        'authors': [{'name': 'Rhonda Byrne'}],
+        'cover_id': null,
+        'key': '/works/6',
+      },
+      {
+        'title': 'Đọc Vị Bất Kỳ Ai',
+        'authors': [{'name': 'David J. Lieberman'}],
+        'cover_id': null,
+        'key': '/works/7',
+      },
+      {
+        'title': 'Nghĩ Giàu Làm Giàu',
+        'authors': [{'name': 'Napoleon Hill'}],
+        'cover_id': null,
+        'key': '/works/8',
+      },
+      {
+        'title': 'Đời Ngắn Đừng Ngủ Dài',
+        'authors': [{'name': 'Robin Sharma'}],
+        'cover_id': null,
+        'key': '/works/9',
+      },
+      {
+        'title': 'Cà Phê Cùng Tony',
+        'authors': [{'name': 'Tony Buổi Sáng'}],
+        'cover_id': null,
+        'key': '/works/10',
+      },
+    ];
+  }
+
+  // Get cover URL from Open Library
+  String? getCoverUrl(dynamic coverId, String size) {
+    if (coverId == null) return null;
+    return 'https://covers.openlibrary.org/b/id/$coverId-$size.jpg';
+  }
+}
+
+// Section Header Component
+class SectionHeader extends StatelessWidget {
+  final String title;
+  final VoidCallback onSeeAll;
+
+  const SectionHeader({
+    Key? key,
+    required this.title,
+    required this.onSeeAll,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
+        GestureDetector(
+          onTap: onSeeAll,
+          child: Row(
+            children: [
+              Text(
+                'Xem tất cả',
+                style: TextStyle(
+                  color: Theme.of(context).primaryColor,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(
+                Icons.arrow_forward_ios,
+                size: 12,
+                color: Theme.of(context).primaryColor,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// Book Card Components
+class RelatedBookCard extends StatelessWidget {
+  final String title;
+  final String author;
+  final Color color;
+  final VoidCallback onTap;
+  final String? coverUrl;
+
+  const RelatedBookCard({
+    Key? key,
+    required this.title,
+    required this.author,
+    required this.color,
+    required this.onTap,
+    this.coverUrl,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 120,
+        margin: const EdgeInsets.only(right: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 120,
+              height: 160,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: coverUrl != null
+                  ? ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  coverUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Center(
+                      child: Text(
+                        title.split(' ').take(2).join('\n'),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    );
+                  },
+                ),
+              )
+                  : Center(
+                child: Text(
+                  title.split(' ').take(2).join('\n'),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            if (author.isNotEmpty)
+              Text(
+                author,
+                style: const TextStyle(fontSize: 10, color: Colors.grey),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class AuthorBookCard extends StatelessWidget {
+  final String title;
+  final String author;
+  final bool isPurchased;
+  final String? coverUrl;
+
+  const AuthorBookCard({
+    Key? key,
+    required this.title,
+    required this.author,
+    this.isPurchased = false,
+    this.coverUrl,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 120,
+      margin: const EdgeInsets.only(right: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Stack(
+            children: [
+              Container(
+                width: 120,
+                height: 160,
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: coverUrl != null
+                    ? ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    coverUrl!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Center(
+                        child: Text(
+                          title.split(' ').take(2).join('\n'),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      );
+                    },
+                  ),
+                )
+                    : Center(
+                  child: Text(
+                    title.split(' ').take(2).join('\n'),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+              if (isPurchased)
+                Positioned(
+                  top: 4,
+                  right: 4,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).primaryColor,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Text(
+                      '1 THẺ FONOS',
+                      style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            author,
+            style: const TextStyle(fontSize: 10, color: Colors.grey),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class PublisherBookCard extends StatelessWidget {
+  final String title;
+  final String author;
+  final Color color;
+  final bool isPurchased;
+  final String? tokenInfo;
+  final String? coverUrl;
+
+  const PublisherBookCard({
+    Key? key,
+    required this.title,
+    required this.author,
+    required this.color,
+    this.isPurchased = false,
+    this.tokenInfo,
+    this.coverUrl,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final textColor = color.computeLuminance() > 0.5 ? Colors.black : Colors.white;
+
+    return Container(
+      width: 120,
+      margin: const EdgeInsets.only(right: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Stack(
+            children: [
+              Container(
+                width: 120,
+                height: 160,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: coverUrl != null
+                    ? ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    coverUrl!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Center(
+                        child: Text(
+                          title.split(' ').take(2).join('\n'),
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: textColor,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                )
+                    : Center(
+                  child: Text(
+                    title.split(' ').take(2).join('\n'),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: textColor,
+                    ),
+                  ),
+                ),
+              ),
+              if (tokenInfo != null)
+                Positioned(
+                  top: 4,
+                  right: 4,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: tokenInfo == 'MIỄN PHÍ' ? Colors.green : Theme.of(context).primaryColor,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      tokenInfo!,
+                      style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          if (author.isNotEmpty)
+            Text(
+              author,
+              style: const TextStyle(fontSize: 10, color: Colors.grey),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final AudiobookApiService _apiService = AudiobookApiService();
+  List<Book> _trendingBooks = [];
+  List<Book> _newReleases = [];
+  List<Book> _featuredBooks = [];
+  bool _isLoading = true;
+  String _errorMessage = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
+
+    try {
+      // Load trending books
+      final trending = await _apiService.getAudiobooks(
+        limit: 10,
+        offset: 0,
+        subject: 'fiction',
+      );
+
+      // Load new releases
+      final newReleases = await _apiService.getAudiobooks(
+        limit: 10,
+        offset: 10,
+        subject: 'bestsellers',
+      );
+
+      // Load featured books
+      final featured = await _apiService.getAudiobooks(
+        limit: 2,
+        subject: 'popular',
+      );
+
+      // Generate random colors for books
+      final List<Color> colors = [
+        Colors.blue[100]!,
+        Colors.purple[100]!,
+        Colors.orange[100]!,
+        Colors.green[100]!,
+        Colors.red[100]!,
+      ];
+
+      setState(() {
+        _trendingBooks = trending.map((book) => Book(
+          title: book['title'] ?? 'Unknown Title',
+          author: book['authors']?.isNotEmpty ? book['authors'][0]['name'] : 'Unknown Author',
+          color: colors[trending.indexOf(book) % colors.length],
+          coverUrl: book['cover_id'] != null ? _apiService.getCoverUrl(book['cover_id'], 'M') : null,
+        )).toList();
+
+        _newReleases = newReleases.map((book) => Book(
+          title: book['title'] ?? 'Unknown Title',
+          author: book['authors']?.isNotEmpty ? book['authors'][0]['name'] : 'Unknown Author',
+          color: colors[newReleases.indexOf(book) % colors.length],
+          coverUrl: book['cover_id'] != null ? _apiService.getCoverUrl(book['cover_id'], 'M') : null,
+        )).toList();
+
+        _featuredBooks = featured.map((book) => Book(
+          title: book['title'] ?? 'Unknown Title',
+          author: book['authors']?.isNotEmpty ? book['authors'][0]['name'] : 'Unknown Author',
+          color: Colors.purple[100]!,
+          coverUrl: book['cover_id'] != null ? _apiService.getCoverUrl(book['cover_id'], 'M') : null,
+        )).toList();
+
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Failed to load audiobooks: ${e.toString()}';
+        _isLoading = false;
+      });
+    }
+  }
+
+  // Navigate to book detail page
+  void _navigateToBookDetail(BuildContext context, Book book) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const HomeDetail()),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final primaryColor = Theme.of(context).primaryColor;
-// Add this at the top of your HomeScreen class
     final List<Color> colorPalette = [
       const Color(0xFF8875C7), // Purple
       const Color(0xFF5E97F6), // Blue
@@ -35,25 +597,7 @@ class HomeScreen extends StatelessWidget {
       const Color(0xFFFFCA28), // Amber
     ];
 
-    // Sample data - replace with API data
-    final List<Book> topBooks = [
-      Book(
-        title: 'Trí tuệ xúc cảm',
-        author: 'Daniel Goleman',
-        color: Colors.blue[100]!,
-      ),
-      Book(
-        title: 'CHÌA TAI LẮNG NGHE',
-        author: 'Bác sĩ Nguyễn Chí Công',
-        color: Colors.grey[300]!,
-      ),
-      Book(
-        title: 'Cuộc sống',
-        author: 'Tác giả',
-        color: Colors.orange[100]!,
-      ),
-    ];
-
+    // Sample data for sections that don't use API
     final List<Podcast> podcourses = [
       Podcast(
         title: '5 Sai Lầm Đặt Giá Khi Triển Khai Trải Nghiệm Khách Hàng',
@@ -83,12 +627,6 @@ class HomeScreen extends StatelessWidget {
       Book(title: 'TÂM HỒN CAO THƯỢNG', author: '', tag: '1 THẺ FONOS'),
     ];
 
-    final List<Book> newBooks = [
-      Book(title: 'SƯ TRÀ THƯ CỦA ĐỊA LÝ', author: 'Robert D. Kaplan'),
-      Book(title: 'CHUYỆN CON MÈO LÓP KÉO CẦU SÁCH', author: 'Natsukawa Sosuke'),
-      Book(title: 'THẦN AI NẤY LO', author: 'Eric Barker'),
-    ];
-
     final List<Review> reviews = [
       Review(
         bookTitle: 'Ông Trăm Tuổi Trèo Qua Cửa Sổ và Biến Mất',
@@ -113,20 +651,6 @@ class HomeScreen extends StatelessWidget {
         timeAgo: '2 tuần trước',
         rating: 5,
         comment: 'Cuốn sách đã thay đổi cách nhìn của tôi về cuộc sống. Câu chuyện về hành trình tìm kiếm kho báu thật sự sâu sắc.',
-      ),
-    ];
-
-    // Add this with your other sample data in the build method
-    final List<Book> featuredBooks = [
-      Book(
-        title: 'Sách Nói Mới Ra Mắt',
-        author: 'Tác giả nổi tiếng',
-        color: Colors.purple[100]!,
-      ),
-      Book(
-        title: 'Cuốn Sách Thịnh Hành',
-        author: 'Nhà văn hàng đầu',
-        color: Colors.blue[100]!,
       ),
     ];
 
@@ -208,249 +732,288 @@ class HomeScreen extends StatelessWidget {
         ),
       ),
 
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Category tabs
-              Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Row(
-                  children: [
-                    _buildCategoryTab('Mới & Hot', true, primaryColor),
-                    const SizedBox(width: 10),
-                    _buildCategoryTab('Ưu đãi', false, primaryColor),
-                  ],
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _errorMessage.isNotEmpty
+          ? AudiobookErrorHandler(
+        message: _errorMessage,
+        onRetry: _loadData,
+      )
+          : SafeArea(
+        child: RefreshIndicator(
+          onRefresh: _loadData,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Category tabs
+                Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Row(
+                    children: [
+                      _buildCategoryTab('Mới & Hot', true, primaryColor),
+                      const SizedBox(width: 10),
+                      _buildCategoryTab('Ưu đãi', false, primaryColor),
+                    ],
+                  ),
                 ),
-              ),
 
-              // Featured book carousel
-              FeaturedBookCarousel(books: featuredBooks),
-
-              // Top trending audiobooks section
-              Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: SectionHeader(
-                  title: 'Top Sách Nói Thịnh Hành',
-                  onSeeAll: () {},
-                ),
-              ),
-
-              // Top books horizontal list
-              SizedBox(
-                height: 120,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  itemCount: topBooks.length,
-                  itemBuilder: (context, index) {
-                    return _buildTopBook(
-                      (index + 1).toString(),
-                      topBooks[index].title,
-                      topBooks[index].author,
-                      topBooks[index].color,
-                    );
+                // Featured book carousel with navigation
+                GestureDetector(
+                  onTap: () {
+                    if (_featuredBooks.isNotEmpty) {
+                      _navigateToBookDetail(context, _featuredBooks[0]);
+                    }
                   },
+                  child: FeaturedBookCarousel(books: _featuredBooks),
                 ),
-              ),
 
-              // Podcourse section
-              Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 12,
-                          backgroundColor: primaryColor.withOpacity(0.7),
-                          child: const Icon(Icons.mic, color: Colors.white, size: 14),
+                // Top trending audiobooks section
+                Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: SectionHeader(
+                    title: 'Top Sách Nói Thịnh Hành',
+                    onSeeAll: () {},
+                  ),
+                ),
+
+                // Top books horizontal list with navigation
+                SizedBox(
+                  height: 120,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    itemCount: _trendingBooks.length,
+                    itemBuilder: (context, index) {
+                      final book = _trendingBooks[index];
+                      return GestureDetector(
+                        onTap: () => _navigateToBookDetail(context, book),
+                        child: _buildTopBook(
+                          (index + 1).toString(),
+                          book.title,
+                          book.author,
+                          book.color,
+                          coverUrl: book.coverUrl,
                         ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'PODCOURSE',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                    GestureDetector(
-                      onTap: () {},
-                      child: Row(
+                      );
+                    },
+                  ),
+                ),
+
+                // Podcourse section
+                Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
                         children: [
-                          const Text('Top thịnh hành hôm nay', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                          const SizedBox(width: 4),
-                          const Icon(Icons.arrow_forward_ios, size: 14),
+                          CircleAvatar(
+                            radius: 12,
+                            backgroundColor: primaryColor.withOpacity(0.7),
+                            child: const Icon(Icons.mic, color: Colors.white, size: 14),
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'PODCOURSE',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
                         ],
                       ),
-                    ),
-                  ],
+                      GestureDetector(
+                        onTap: () {},
+                        child: Row(
+                          children: [
+                            const Text('Top thịnh hành hôm nay', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                            const SizedBox(width: 4),
+                            const Icon(Icons.arrow_forward_ios, size: 14),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
 
-              // Podcourse horizontal list
-              SizedBox(
-                height: 180,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  itemCount: podcourses.length,
-                  itemBuilder: (context, index) {
-                    return _buildPodcourse(
-                      podcourses[index].number,
-                      podcourses[index].title,
-                      primaryColor: primaryColor,
-                    );
-                  },
+                // Podcourse horizontal list with navigation
+                SizedBox(
+                  height: 180,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    itemCount: podcourses.length,
+                    itemBuilder: (context, index) {
+                      return GestureDetector(
+                        onTap: () => _navigateToBookDetail(context, Book(title: podcourses[index].title, author: '')),
+                        child: _buildPodcourse(
+                          podcourses[index].number,
+                          podcourses[index].title,
+                          primaryColor: primaryColor,
+                        ),
+                      );
+                    },
+                  ),
                 ),
-              ),
 
-              // Fonos collection
-              Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: SectionHeader(
-                  title: 'Fonos Đoán Gu Bạn Là...',
-                  onSeeAll: () {},
+                // Fonos collection
+                Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: SectionHeader(
+                    title: 'Fonos Đoán Gu Bạn Là...',
+                    onSeeAll: () {},
+                  ),
                 ),
-              ),
 
-              // Book collection horizontal list
-              SizedBox(
-                height: 220,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  itemCount: collectionBooks.length,
-                  itemBuilder: (context, index) {
-                    // Use RelatedBookCard component
-                    return RelatedBookCard(
-                      title: collectionBooks[index].title,
-                      author: collectionBooks[index].author,
-                      color: Colors.white,
-                      onTap: () {},
-                    );
-                  },
+                // Book collection horizontal list with navigation
+                SizedBox(
+                  height: 220,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    itemCount: collectionBooks.length,
+                    itemBuilder: (context, index) {
+                      return RelatedBookCard(
+                        title: collectionBooks[index].title,
+                        author: collectionBooks[index].author,
+                        color: Colors.white,
+                        onTap: () => _navigateToBookDetail(context, collectionBooks[index]),
+                      );
+                    },
+                  ),
                 ),
-              ),
 
-              // CRM section
-              Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: SectionHeader(
-                  title: 'Cảm Nhận Quà Giọng Tác Giả',
-                  onSeeAll: () {},
+                // CRM section
+                Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: SectionHeader(
+                    title: 'Cảm Nhận Quà Giọng Tác Giả',
+                    onSeeAll: () {},
+                  ),
                 ),
-              ),
 
-              // CRM books horizontal list
-              SizedBox(
-                height: 220,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  itemCount: crmBooks.length,
-                  itemBuilder: (context, index) {
-                    // Use PublisherBookCard component
-                    return PublisherBookCard(
-                      title: crmBooks[index].title,
-                      author: crmBooks[index].author,
-                      color: index % 2 == 0 ? Colors.black : const Color(0xFFFFE082),
-                      isPurchased: true,
-                      tokenInfo: crmBooks[index].tag,
-                    );
-                  },
+                // CRM books horizontal list with navigation
+                SizedBox(
+                  height: 220,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    itemCount: crmBooks.length,
+                    itemBuilder: (context, index) {
+                      return GestureDetector(
+                        onTap: () => _navigateToBookDetail(context, crmBooks[index]),
+                        child: PublisherBookCard(
+                          title: crmBooks[index].title,
+                          author: crmBooks[index].author,
+                          color: index % 2 == 0 ? Colors.black : const Color(0xFFFFE082),
+                          isPurchased: true,
+                          tokenInfo: crmBooks[index].tag,
+                        ),
+                      );
+                    },
+                  ),
                 ),
-              ),
 
-              // Book review section
-              Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: SectionHeader(
-                  title: 'Đánh Giá Nổi Bật',
-                  onSeeAll: () {},
+                // Book review section
+                Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: SectionHeader(
+                    title: 'Đánh Giá Nổi Bật',
+                    onSeeAll: () {},
+                  ),
                 ),
-              ),
 
-              // Book reviews horizontal list
-              SizedBox(
-                height: 240,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  itemCount: reviews.length,
-                  itemBuilder: (context, index) {
-                    return _buildReviewCard(
-                      reviews[index].bookTitle,
-                      reviews[index].author,
-                      reviews[index].reviewerName,
-                      reviews[index].timeAgo,
-                      reviews[index].rating,
-                      reviews[index].comment,
-                      primaryColor: primaryColor,
-                    );
-                  },
+                // Book reviews horizontal list with navigation
+                SizedBox(
+                  height: 240,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    itemCount: reviews.length,
+                    itemBuilder: (context, index) {
+                      return GestureDetector(
+                        onTap: () => _navigateToBookDetail(
+                            context,
+                            Book(
+                              title: reviews[index].bookTitle,
+                              author: reviews[index].author,
+                            )
+                        ),
+                        child: _buildReviewCard(
+                          reviews[index].bookTitle,
+                          reviews[index].author,
+                          reviews[index].reviewerName,
+                          reviews[index].timeAgo,
+                          reviews[index].rating,
+                          reviews[index].comment,
+                          primaryColor: primaryColor,
+                        ),
+                      );
+                    },
+                  ),
                 ),
-              ),
 
-              // Recently published section
-              Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: SectionHeader(
-                  title: 'Mới Xuất Bản',
-                  onSeeAll: () {},
+                // Recently published section
+                Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: SectionHeader(
+                    title: 'Mới Xuất Bản',
+                    onSeeAll: () {},
+                  ),
                 ),
-              ),
 
-              // Recently published books
-              SizedBox(
-                height: 220,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  itemCount: newBooks.length,
-                  itemBuilder: (context, index) {
-                    // Use AuthorBookCard component
-                    return AuthorBookCard(
-                      title: newBooks[index].title,
-                      author: newBooks[index].author,
-                      isPurchased: true,
-                    );
-                  },
+                // Recently published books with navigation
+                SizedBox(
+                  height: 220,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    itemCount: _newReleases.length,
+                    itemBuilder: (context, index) {
+                      final book = _newReleases[index];
+                      return GestureDetector(
+                        onTap: () => _navigateToBookDetail(context, book),
+                        child: AuthorBookCard(
+                          title: book.title,
+                          author: book.author,
+                          isPurchased: true,
+                          coverUrl: book.coverUrl,
+                        ),
+                      );
+                    },
+                  ),
                 ),
-              ),
 
-              // Categories section
-              Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: SectionHeader(
-                  title: 'Danh Mục Sách Nói',
-                  onSeeAll: () {},
+                // Categories section
+                Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: SectionHeader(
+                    title: 'Danh Mục Sách Nói',
+                    onSeeAll: () {},
+                  ),
                 ),
-              ),
 
-              // Category list
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                child: Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    _buildCategory('Tâm lý học', Icons.psychology, primaryColor),
-                    _buildCategory('Kỹ năng', Icons.lightbulb, primaryColor),
-                    _buildCategory('Tư duy', Icons.emoji_objects, primaryColor),
-                    _buildCategory('Tâm linh - Tôn giáo', Icons.auto_awesome, primaryColor),
-                    _buildCategory('Văn học', Icons.book, primaryColor),
-                    _buildCategory('Kinh doanh', Icons.business, primaryColor),
-                  ],
+                // Category list
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                  child: Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      _buildCategory('Tâm lý học', Icons.psychology, primaryColor),
+                      _buildCategory('Kỹ năng', Icons.lightbulb, primaryColor),
+                      _buildCategory('Tư duy', Icons.emoji_objects, primaryColor),
+                      _buildCategory('Tâm linh - Tôn giáo', Icons.auto_awesome, primaryColor),
+                      _buildCategory('Văn học', Icons.book, primaryColor),
+                      _buildCategory('Kinh doanh', Icons.business, primaryColor),
+                    ],
+                  ),
                 ),
-              ),
 
-              const SizedBox(height: 20),
-            ],
+                const SizedBox(height: 20),
+              ],
+            ),
           ),
         ),
       ),
@@ -467,9 +1030,9 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
+}
 
-
-  // Include all the widget building methods from HomeScreen with optional parameters
+  // Widget building methods
   Widget _buildCategoryTab(String title, bool isActive, Color primaryColor) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -503,7 +1066,6 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
-
 
   Widget _buildTopBook(String number, String title, String author, Color color, {String? coverUrl}) {
     return Container(
@@ -596,7 +1158,6 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
-
 
   Widget _buildPodcourse(String number, String title, {String? imageUrl, required Color primaryColor}) {
     return Container(
@@ -693,205 +1254,6 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // Horizontal book card for collections
-  Widget _buildBookCardHorizontal(String title, {String? tag, String? coverUrl, required Color primaryColor}) {
-    // Generate a random color for each book
-    final List<Color> colors = [
-      primaryColor.withOpacity(0.3),
-      Colors.green[100]!,
-      Colors.orange[100]!,
-      Colors.purple[100]!,
-      Colors.teal[100]!,
-    ];
-    final Color randomColor = colors[title.length % colors.length];
-
-    return Container(
-      width: 120,
-      margin: const EdgeInsets.only(right: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Stack(
-            children: [
-              Container(
-                width: 120,
-                height: 180, // Increased height for taller book covers
-                decoration: BoxDecoration(
-                  color: randomColor,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: randomColor.withOpacity(0.8), width: 1),
-                ),
-                child: coverUrl != null
-                    ? ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    coverUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Center(
-                        child: Text(
-                          title.split(' ').take(2).join('\n'),
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: randomColor.withOpacity(1.0).computeLuminance() > 0.5
-                                ? Colors.black87
-                                : Colors.white,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                )
-                    : Center(
-                  child: Text(
-                    title.split(' ').take(2).join('\n'),
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: randomColor.withOpacity(1.0).computeLuminance() > 0.5
-                          ? Colors.black87
-                          : Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-              if (tag != null)
-                Positioned(
-                  top: 4,
-                  right: 4,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: tag == 'MIỄN PHÍ' ? Colors.green : primaryColor,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      tag,
-                      style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNewBook(String title, String author, {String? coverUrl, required Color primaryColor}) {
-    // Generate a random color for each book
-    final List<Color> colors = [
-      Colors.amber[100]!,
-      primaryColor.withOpacity(0.3),
-      Colors.red[100]!,
-    ];
-    final Color randomColor = colors[title.length % colors.length];
-
-    return Container(
-      width: 120,
-      margin: const EdgeInsets.only(right: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Stack(
-            children: [
-              Container(
-                width: 120,
-                height: 160, // Increased height for taller book covers
-                decoration: BoxDecoration(
-                  color: randomColor,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: randomColor.withOpacity(0.8), width: 1),
-                ),
-                child: coverUrl != null
-                    ? ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    coverUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Center(
-                        child: Text(
-                          title.split(' ').take(2).join('\n'),
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: randomColor.withOpacity(1.0).computeLuminance() > 0.5
-                                ? Colors.black87
-                                : Colors.white,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                )
-                    : Center(
-                  child: Text(
-                    title.split(' ').take(2).join('\n'),
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: randomColor.withOpacity(1.0).computeLuminance() > 0.5
-                          ? Colors.black87
-                          : Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                top: 4,
-                right: 4,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: primaryColor,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const Text(
-                    '1 THẺ FONOS',
-                    style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  author,
-                  style: const TextStyle(fontSize: 10, color: Colors.grey),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Review card for horizontal scrolling
   Widget _buildReviewCard(String bookTitle, String author, String reviewerName, String timeAgo, int rating, String comment, {required Color primaryColor}) {
     return Container(
       width: 320,
@@ -910,7 +1272,7 @@ class HomeScreen extends StatelessWidget {
         ],
       ),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxHeight: 240), // Giới hạn chiều cao tối đa của card
+        constraints: const BoxConstraints(maxHeight: 240),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -966,7 +1328,7 @@ class HomeScreen extends StatelessWidget {
                 CircleAvatar(
                   radius: 16,
                   backgroundColor: const Color(0xFFF5F5F7),
-                  child: const Icon(Icons.person, size: 20, color: Colors.white),
+                  child: const Icon(Icons.person, size: 20, color: Colors.grey),
                 ),
                 const SizedBox(width: 8),
                 Column(
@@ -1028,8 +1390,6 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-
-
   Widget _buildCategory(String title, IconData icon, Color primaryColor) {
     return Container(
       width: 100,
@@ -1069,7 +1429,6 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-}
 class FeaturedBookCarousel extends StatefulWidget {
   final List<Book> books;
 
@@ -1095,7 +1454,12 @@ class _FeaturedBookCarouselState extends State<FeaturedBookCarousel> {
   @override
   Widget build(BuildContext context) {
     if (widget.books.isEmpty) {
-      return const SizedBox.shrink();
+      return const SizedBox(
+        height: 200,
+        child: Center(
+          child: Text('No featured books available'),
+        ),
+      );
     }
 
     return Column(
@@ -1219,65 +1583,18 @@ class FeaturedBookCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Text(
-                            book.title.toUpperCase(),
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Colors.brown,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    // Audio badge with only bottom left and bottom right rounded corners
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 5),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Colors.black.withOpacity(0.6), Colors.black.withOpacity(0.8)],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                        ),
-                        borderRadius: const BorderRadius.only(
-                          bottomLeft: Radius.circular(12),
-                          bottomRight: Radius.circular(12),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.min,
-                        children: const [
-                          Icon(
-                            Icons.headphones,
-                            color: Colors.white,
-                            size: 10,
-                          ),
-                          SizedBox(width: 4),
-                          Text(
-                            'SÁCH NÓI MỚI',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 8,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                child: book.coverUrl != null && book.coverUrl!.isNotEmpty
+                    ? ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(
+                    book.coverUrl!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return _buildDefaultCover();
+                    },
+                  ),
+                )
+                    : _buildDefaultCover(),
               ),
             ),
 
@@ -1367,5 +1684,103 @@ class FeaturedBookCard extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildDefaultCover() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Expanded(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                book.title.toUpperCase(),
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.brown,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+          ),
+        ),
+        // Audio badge with only bottom left and bottom right rounded corners
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 5),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.black.withOpacity(0.6), Colors.black.withOpacity(0.8)],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+            borderRadius: const BorderRadius.only(
+              bottomLeft: Radius.circular(12),
+              bottomRight: Radius.circular(12),
+            ),
+          ),
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.headphones,
+                color: Colors.white,
+                size: 10,
+              ),
+              SizedBox(width: 4),
+              Text(
+                'SÁCH NÓI MỚI',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 8,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 }
 
+class AudiobookErrorHandler extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const AudiobookErrorHandler({
+    Key? key,
+    required this.message,
+    required this.onRetry,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, size: 48, color: Colors.red),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            child: Text(
+              message,
+              style: const TextStyle(fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: onRetry,
+            child: const Text('Thử lại'),
+          ),
+        ],
+      ),
+    );
+  }
+}
