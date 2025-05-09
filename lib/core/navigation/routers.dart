@@ -63,7 +63,7 @@ class FonosRouter {
   static void setupRouter() {
     router.define(
       '/',
-      handler: _homeScreen,
+      handler: _welcomeHandler,
       transitionType: TransitionType.inFromRight,
     );
 
