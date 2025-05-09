@@ -5,6 +5,7 @@ class CustomInput extends StatelessWidget {
   final String content;
   final Color? backgroundColor;
   final String navigateText; // Tên route để điều hướng (bắt buộc)
+  final Color? textColor;
 
   const CustomInput({
     Key? key,
@@ -12,12 +13,14 @@ class CustomInput extends StatelessWidget {
     required this.content,
     this.backgroundColor,
     required this.navigateText, // Tên route để điều hướng
+    this.textColor,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     final Color effectiveBackgroundColor = backgroundColor ?? Colors.white;
-    final Color textColor = icon != null ? Colors.black : Colors.white;
+    final Color effectiveTextColor = textColor ??
+        (icon != null ? Colors.black : Colors.white);
 
     return GestureDetector(
       onTap: () {
@@ -29,7 +32,6 @@ class CustomInput extends StatelessWidget {
         decoration: BoxDecoration(
           color: effectiveBackgroundColor,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.grey.shade300),
         ),
         child: Row(
           mainAxisAlignment: icon != null ? MainAxisAlignment.start : MainAxisAlignment.center,
@@ -45,8 +47,9 @@ class CustomInput extends StatelessWidget {
             Text(
               content,
               style: TextStyle(
-                color: textColor,
+                color: effectiveTextColor,
                 fontSize: 16,
+                fontWeight: FontWeight.bold
               ),
             ),
           ],

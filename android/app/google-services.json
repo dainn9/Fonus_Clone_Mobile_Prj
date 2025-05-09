@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "915357877849",
+    "project_id": "flutter-login-app-3d444",
+    "storage_bucket": "flutter-login-app-3d444.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:915357877849:android:5e8d31565b859856345348",
+        "android_client_info": {
+          "package_name": "com.example.clone_fonus_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyATX6D-cj4VanUg693xh7mI8r6PqHt7D40"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
